@@ -1,0 +1,454 @@
+<?php
+/**
+ * Magezon
+ *
+ * This source file is subject to the Magezon Software License, which is available at https://magezon.com/license/.
+ * Do not edit or add to this file if you wish to upgrade the to newer versions in the future.
+ * If you wish to customize this module for your needs.
+ * Please refer to https://www.magezon.com for more information.
+ *
+ * @category  Magezon
+ * @author    LeeNguyen(chiennq@magezon.com)
+ * @package   Magezon_HyvaBuilder
+ * @copyright Copyright (C) 2023 Magezon (https://magezon.com)
+ */
+?>
+<?php
+/**
+ * @var $block \Magezon\Builder\Block\Element
+ */
+use Magento\Framework\App\Action\Action;
+use Hyva\Theme\ViewModel\ProductListItem;
+use Hyva\Theme\Model\ViewModelRegistry;
+use Magento\Framework\Escaper;
+use Hyva\Theme\ViewModel\ProductPage;
+use Magento\Catalog\ViewModel\Product\OptionsData as ProductOptionsData;
+use Magento\Catalog\Helper\Output as CatalogOutputHelper;
+use Hyva\Theme\ViewModel\HeroiconsOutline;
+use Hyva\Theme\ViewModel\HeroiconsSolid;
+
+$coreHelper           = $this->helper('\Magezon\Core\Helper\Data');
+$compareHelper        = $this->helper('Magento\Catalog\Helper\Product\Compare');
+$element              = $this->getElement();
+$title                = $coreHelper->filter($element->getData('title'));
+$titleAlign           = $element->getData('title_align');
+$titleTag             = $element->getData('title_tag') ? $element->getData('title_tag') : 'h2';
+$description          = $coreHelper->filter($element->getData('description'));
+$showLine             = $element->getData('show_line');
+$linePosition         = $element->getData('line_position');
+$carouselOptions      = $this->getOwlCarouselOptions();
+$lazyLoad             = $element->getData('owl_lazyload');
+$items                = $this->getItems();
+$imageId              = 'category_page_grid';
+$templateType         = \Magento\Catalog\Block\Product\ReviewRendererInterface::SHORT_VIEW;
+$showImage            = $element->getData('product_image');
+$showName             = $element->getData('product_name');
+$showPrice            = $element->getData('product_price');
+$showShortDescription = $element->getData('product_shortdescription');
+$showWishlist         = $element->getData('product_wishlist');
+$showCompare          = $element->getData('product_compare');
+$showCart             = $element->getData('product_addtocart');
+$showReview           = $element->getData('product_review');
+$swatches             = $element->getData('product_swatches');
+$htmlId               = $element->getHtmlId();
+$id                   = time() . uniqid();
+$classes              = $this->getOwlCarouselClasses();
+
+/** @var ViewModelRegistry $viewModels */
+/** @var Escaper $escaper */
+/** @var ProductPage $productViewModel */
+/** @var CatalogOutputHelper $catalogOutputHelper */
+/** @var HeroiconsOutline $heroicons */
+/** @var HeroiconsSolid $heroiconsSolid */
+$eagerLoadImagesCount = (int)($block->getData('eager_load_images_count') ?? 3);
+$productListItemViewModel = $viewModels->require(ProductListItem::class);
+$productViewModel = $viewModels->require(ProductPage::class);
+$productOptionsViewmodel = $viewModels->require(ProductOptionsData::class);
+$catalogOutputHelper = $this->helper(CatalogOutputHelper::class);
+$heroicons = $viewModels->require(HeroiconsOutline::class);
+$heroiconsSolid = $viewModels->require(HeroiconsSolid::class);
+
+$viewIsGrid = true;
+$uniqueId = '_' . uniqid();
+$sliderIndex = 1;
+if (!$itemCount = count($items)) {
+    return '';
+}
+$_imageHelper = $this->helper(\Magento\Catalog\Helper\Image::class);
+?>
+<script>
+    'use strict';
+
+    function initSliderComponent() {
+        return {
+            active: 0,
+            itemCount: 0,
+            getSlider() {
+                return this.$root.querySelector('.js_slides');
+            },
+            pageSize: 1,
+            pageFillers: 0,
+            calcPageSize() {
+                const slider = this.getSlider();
+                if (slider) {
+                    this.itemCount = slider.querySelectorAll('.js_slide').length;
+                    this.pageSize = Math.round(slider.clientWidth / slider.querySelector('.js_slide').clientWidth);
+                    this.pageFillers = (
+                        this.pageSize * Math.ceil(this.itemCount / this.pageSize)
+                    ) - this.itemCount;
+                }
+            },
+            calcActive() {
+                const slider = this.getSlider();
+                if (slider) {
+                    const sliderItems = this.itemCount + this.pageFillers;
+                    const calculatedActiveSlide = slider.scrollLeft / (slider.scrollWidth / sliderItems);
+                    this.active = Math.round(calculatedActiveSlide / this.pageSize) * this.pageSize;
+                }
+            },
+            scrollPrevious() {
+                this.scrollTo(this.active - this.pageSize);
+            },
+            scrollNext() {
+                this.scrollTo(this.active + this.pageSize);
+            },
+            scrollTo(idx) {
+                const slider = this.getSlider();
+                if (slider) {
+                    const slideWidth = slider.scrollWidth / (this.itemCount + this.pageFillers);
+                    slider.scrollLeft = Math.floor(slideWidth) * idx;
+                    this.active = idx;
+                }
+            },
+            skipCarouselToNavigation(navSelector) {
+                const element = document.getElementById(navSelector)
+                if (element) {
+                    element.scrollIntoView({behavior: 'smooth', block: 'end'});
+                    const button = element.querySelector('button:not([disabled])');
+                    this.$nextTick(() => button && button.focus({preventScroll: true}))
+                }
+            }
+        }
+    }
+</script>
+<div class="mgz-block">
+	<?php if ($title || $description) { ?>
+	<div class="mgz-block-heading mgz-block-heading-align-<?= $titleAlign ?><?= $showLine ? ' mgz-block-heading-line' : '' ?> mgz-block-heading-line-position-<?= $linePosition ?>">
+		<?php if ($title) { ?>
+			<<?= $titleTag ?> class="title"><?= $title ?></<?= $titleTag ?>>
+		<?php } ?>
+		<?php if ($description) { ?>
+			<div class="info"><?= $description ?></div>
+		<?php } ?>
+	</div>
+	<?php } ?>
+	<div class="mgz-block-content">
+		<?php if (count($items)) { ?>
+            <section class="relative hyva-slider"
+                x-data="initSliderComponent()"
+                x-init="calcPageSize();"
+                x-id="['slider-nav', 'slider-end', 'slider-desc']"
+                @resize.window.debounce="calcPageSize(); $nextTick( function() { calcActive() })"
+                role="group"
+                aria-roledescription="<?= $escaper->escapeHtml(__('Slider')) ?>"
+                aria-label="<?= $escaper->escapeHtml(__('Latest items')) ?>"
+                :aria-describedby="$id('slider-desc')"
+            >
+                <span
+                    class="sr-only"
+                    :id="$id('slider-desc')"
+                    tabindex="-1"
+                >
+                        <?= $escaper->escapeHtml(__('Navigating through the elements of the carousel is possible using the tab key. You can skip the carousel or go straight to carousel navigation using the skip links.')) ?>
+                </span>
+                <a
+                    :href="`#${$id('slider-end')}`"
+                    class="action skip sr-only focus:not-sr-only focus:absolute focus:z-30 focus:bg-white"
+                >
+                    <?= $escaper->escapeHtml(__('Press to skip the slider')) ?>
+                </a>
+                <button
+                    x-show="itemCount > pageSize"
+                    type="button"
+                    class="action skip sr-only focus:not-sr-only focus:absolute focus:z-30 focus:bg-white"
+                    @click.prevent="skipCarouselToNavigation($id('slider-nav'))"
+                >
+                    <?= $escaper->escapeHtml(__('Press to go to carousel navigation')) ?>
+                </button>
+                <div class="relative w-full overflow-x-hidden">
+                    <div class="relative flex flex-nowrap w-full overflow-auto gap-1 md:gap-2 lg:gap-3 transition-all js_slides snap"
+                        @scroll.debounce="calcActive"
+                    >
+                        <?php foreach ($items as $item): ?>
+                            <div role="group"
+                                x-id="['slide-desc']"
+                                aria-roledescription="<?= $escaper->escapeHtml(__('Slide')) ?>"
+                                :aria-hidden="<?= (int) $sliderIndex ?> > active && <?= (int) $sliderIndex ?> <= (active + pageSize) ? 'false' : 'true'"
+                                aria-label="<?= $escaper->escapeHtmlAttr(__('Slide %1 of %2', $sliderIndex++, count($items))) ?>"
+                                :aria-describedby="$id('slide-desc')"
+                                class="relative flex shrink-0 justify-center w-pc-mobile md:w-pc-tablet lg:w-pc-desktop py-1 px-0.5 js_slide"
+                            >
+                            <?php foreach ($item as $product) :?> 
+                            <?php if ($product->isSaleable()): ?> 
+                            <form method="post"
+                                    action="<?= $escaper->escapeUrl($productViewModel->getAddToCartUrl($product, ['useUencPlaceholder' => true])) ?>"
+                                    class="item product product-item product_addtocart_form card card-interactive flex flex-col w-full <?= $viewIsGrid ? '' : 'md:flex-row' ?>"
+                                <?php if ($product->getOptions()): ?> 
+                                    enctype="multipart/form-data"
+                                <?php endif; ?>
+                            >
+                                <?= /** @noEscape */
+                                $block->getBlockHtml('formkey') ?>
+                                <input type="hidden" name="product" value="<?= (int)$product->getId() ?>"/>
+                                <?php $options = $productOptionsViewmodel->getOptionsData($product); ?>
+                                <?php foreach ($options as $optionItem): ?> 
+                                    <input type="hidden"
+                                            name="<?= $escaper->escapeHtml($optionItem['name']) ?>"
+                                            value="<?= $escaper->escapeHtml($optionItem['value']) ?>">
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                            <div class="item product product-item card card-interactive flex flex-col w-full <?= $viewIsGrid ? '' : 'md:flex-row' ?>">
+                            <?php endif; ?>
+                                <?php /* Product Image */ ?>
+                                <a data-wpproductlabel="1" data-product-id="<?php echo $product->getId() ?>"
+                                    href="<?= $escaper->escapeUrl($product->getProductUrl()) ?>"
+                                    class="group product photo product-item-photo block mx-auto mb-1.5 md:mb-2.5 <?= $viewIsGrid ? '' : 'md:w-2/6 md:mb-0 md:mr-5' ?>"
+                                    tabindex="-1"
+                                >
+                                    <?php if (!$product->isSaleable()): ?>
+                                    <div class="oos-label absolute z-[1] top-2 left-2 md:top-3 md:left-3 bg-neutral-700 text-white text-xs md:text-sm px-2 py-1 font-bold rounded uppercase">
+                                        <?php 
+                                            $stockStatusBlock = $block->getLayout()->createBlock('Magento\Catalog\Block\Product\AbstractProduct');
+                                        ?>
+                                        <?php if ($stockStatusBlock->displayProductStockStatus()): ?>
+                                            <div class="text-right">
+                                                <p class="flex items-center justify-end align-middle gap-x-2 unavailable stock"
+                                                title="<?= $escaper->escapeHtmlAttr(__('Availability')) ?>">
+                                                    <span><?= $escaper->escapeHtml(__('Out of stock')) ?></span>
+                                                </p>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
+
+                                    <?php
+                                        $_imageHover = 'hover_product_list_category_page';
+                                        $productImageHover = $_imageHelper->init($product, $_imageHover);
+                                    ?>
+
+                                    <?= $block->getImage($product, $imageId)
+                                        ->setTemplate('Magento_Catalog::product/list/image.phtml')
+                                        ->setData('custom_attributes', ['loading' => 'eager', 'fetchpriority' => 'high', 'isSaleable' => $product->isSaleable()])
+                                        ->setProductId($product->getId())
+                                        ->setData('image_hover', $productImageHover)
+                                        ->toHtml(); ?>
+                                </a>
+
+                                <script>
+                                    function initAction() {
+                                        return {
+                                            isMobile: true,
+                                            init() {
+                                                const matchMedia = window.matchMedia('(max-width: 767px)');
+
+                                                // set the initial value
+                                                this.isMobile = matchMedia.matches;
+
+                                                // trigger update value on changes
+                                                if(typeof matchMedia.onchange !== 'object') {
+                                                    // fallback for iOS 12/13, where addEventListener does not accept an event type parameter
+                                                    matchMedia.addListener((event) => this.isMobile = event.matches);
+                                                } else {
+                                                    matchMedia.addEventListener(
+                                                        "change",
+                                                        (event) => this.isMobile = event.matches
+                                                    )
+                                                }
+                                            },
+                                        }
+                                    }
+                                </script>
+                                <div class="product-info flex flex-col grow" 
+                                    x-data="initAction()">
+                                    <div class="testo mt-0.5 mb-2 md:my-1.5 items-center justify-center text-primary font-semibold text-base <?= $viewIsGrid ? '' : 'md:text-left' ?>">
+                                        <?php if ($showName): ?>
+                                            <a class="product-item-link text-base md:text-lg"
+                                                href="<?= $escaper->escapeUrl($product->getProductUrl()) ?>">
+                                                <?= /* @noEscape */
+                                                $catalogOutputHelper->productAttribute($product, $product->getName(), 'name') ?>
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <?php if ($showShortDescription): ?>
+                                        <template x-if="!isMobile"> 
+                                            <div class="short-description z-0 mb-1.5 items-center justify-start text-neutral-500 text-left line-clamp-2 <?= $viewIsGrid ? '' : 'md:text-left' ?>">
+                                                <?= $coreHelper->filter($product->getShortDescription()) ?>
+                                            </div>
+                                        </template>
+                                    <?php endif; ?>
+
+                                    <?php if ($showReview): ?>
+                                        <div class="<?= $viewIsGrid ? '' : 'md:mx-0 md:w-auto' ?>">
+                                            <?= $block->getReviewsSummaryHtml($product, 'short') ?>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if ($product->isAvailable()): ?>
+                                        <?= $block->getProductDetailsHtml($product) ?>
+                                    <?php endif; ?>
+
+                                    <?= $swatches ? $this->getSwatchesHtml($product) : '' ?>
+
+                                    <script>
+                                        function initPriceBox_<?= /** @noEscape */ $uniqueId ?>() {
+                                            return {
+                                                updatePrice(priceData) {
+                                                    const regularPriceLabel = this.$root.querySelector('.normal-price .price-label');
+                                                    const regularPriceElement = this.$root.querySelector('.normal-price [data-price-type=finalPrice].price-wrapper .price');
+                                                    const basePriceElement = this.$root.querySelector('.normal-price [data-price-type=basePrice].price-wrapper .price');
+                                                    if (priceData.finalPrice.amount < priceData.oldPrice.amount) {
+                                                        regularPriceLabel?.classList.add('hidden');
+                                                    } else {
+                                                        regularPriceLabel?.classList.remove('hidden');
+                                                    }
+                                                    regularPriceElement && (regularPriceElement.innerText = hyva.formatPrice(priceData.finalPrice.amount));
+                                                    basePriceElement && (basePriceElement.innerText = hyva.formatPrice(priceData.basePrice.amount));
+                                                }
+                                            }
+                                        }
+                                    </script>
+                                    <div class="pt-2 text-neutral-800"
+                                            x-data="initPriceBox_<?= /** @noEscape */
+                                            $uniqueId ?>()"
+                                            @update-prices-<?= (int)$product->getId() ?>.window="updatePrice($event.detail);"
+                                    >
+                                        <?= /* @noEscape */
+                                        $productListItemViewModel->getProductPriceHtml($product) ?>
+                                    </div>
+                                        
+                                    <template x-if="!isMobile">  
+                                        <div class="bbbb mt-auto pt-4 flex flex-wrap justify-center items-center">
+                                            <?php if ($product->isSaleable()): ?>
+                                                <?php if($showCart) :?>
+                                                    <button class="w-auto btn bg-neutral-800 justify-center text-base md:font-medium lg:font-bold py-2.5 px-[18px]
+                                                <?= $viewIsGrid ? 'mr-auto' : 'mr-auto md:mr-0' ?>"
+                                                            aria-label="<?= $escaper->escapeHtmlAttr(__('Add to Cart')) ?>"
+                                                    >
+                                                    <svg class="md:hidden lg:inline-flex" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                                        <path d="M1.875 2.5H3.02974C3.45447 2.5 3.82615 2.78555 3.93559 3.19594L4.25491 4.39341M6.25 11.875C4.86929 11.875 3.75 12.9943 3.75 14.375H16.875M6.25 11.875H15.5985C16.5328 9.9578 17.3481 7.97196 18.0348 5.92709C14.0667 4.91371 9.90876 4.375 5.625 4.375C5.16684 4.375 4.71012 4.38116 4.25491 4.39341M6.25 11.875L4.25491 4.39341M5 16.875C5 17.2202 4.72018 17.5 4.375 17.5C4.02982 17.5 3.75 17.2202 3.75 16.875C3.75 16.5298 4.02982 16.25 4.375 16.25C4.72018 16.25 5 16.5298 5 16.875ZM15.625 16.875C15.625 17.2202 15.3452 17.5 15 17.5C14.6548 17.5 14.375 17.2202 14.375 16.875C14.375 16.5298 14.6548 16.25 15 16.25C15.3452 16.25 15.625 16.5298 15.625 16.875Z" stroke="#FFE8FC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                                    </svg>
+                                                        <span class="ml-2 inline <?= $viewIsGrid ? 'md:ml-0 lg:ml-2 lg:inline' : '' ?>">
+                                                            <?= $escaper->escapeHtml(__('Add to Cart')) ?>
+                                                        </span>
+                                                    </button>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                <button class="w-auto btn btn-primary bg-neutral-200 hover:bg-neutral-200 text-neutral-400 hover:text-neutral-400 pointer-events-none justify-center text-base md:font-medium lg:font-bold py-2.5 px-[18px] disabled
+                                                <?= $viewIsGrid ? 'mr-auto' : 'mr-auto md:mr-0' ?>"
+                                                            aria-label="<?= $escaper->escapeHtmlAttr(__('Add to Cart')) ?>"
+                                                    >
+                                                    <svg class="md:hidden lg:inline-flex" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                                        <path d="M1.875 2.5H3.02974C3.45447 2.5 3.82615 2.78555 3.93559 3.19594L4.25491 4.39341M6.25 11.875C4.86929 11.875 3.75 12.9943 3.75 14.375H16.875M6.25 11.875H15.5985C16.5328 9.9578 17.3481 7.97196 18.0348 5.92709C14.0667 4.91371 9.90876 4.375 5.625 4.375C5.16684 4.375 4.71012 4.38116 4.25491 4.39341M6.25 11.875L4.25491 4.39341M5 16.875C5 17.2202 4.72018 17.5 4.375 17.5C4.02982 17.5 3.75 17.2202 3.75 16.875C3.75 16.5298 4.02982 16.25 4.375 16.25C4.72018 16.25 5 16.5298 5 16.875ZM15.625 16.875C15.625 17.2202 15.3452 17.5 15 17.5C14.6548 17.5 14.375 17.2202 14.375 16.875C14.375 16.5298 14.6548 16.25 15 16.25C15.3452 16.25 15.625 16.5298 15.625 16.875Z" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                                    </svg>
+                                                        <span class="ml-2 inline <?= $viewIsGrid ? 'md:ml-0 lg:ml-2 lg:inline' : '' ?>">
+                                                            <?= $escaper->escapeHtml(__('Add to Cart')) ?>
+                                                        </span>
+                                                    </button>
+                                            <?php endif; ?>
+                                            <?php if ($showWishlist): ?>
+                                                <button x-data="initWishlist()"
+                                                        @click.prevent="addToWishlist(<?= (int)$product->getId() ?>)"
+                                                        aria-label="<?= $escaper->escapeHtmlAttr(__('Add to Wish List')) ?>"
+                                                        type="button"
+                                                        class="action towishlist rounded-md w-10 h-10 bg-white p-0 border-[1.5px] border-neutral-200 border-solid inline-flex shrink-0 items-center justify-center text-gray-500 hover:text-red-600 hover:border-neutral-400 focus:ring-2 ring-[#E0E2E7] ml-1">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                                            <path d="M17.5 6.875C17.5 4.80393 15.7511 3.125 13.5938 3.125C11.9807 3.125 10.5961 4.06356 10 5.40285C9.40393 4.06356 8.01927 3.125 6.40625 3.125C4.24889 3.125 2.5 4.80393 2.5 6.875C2.5 12.8921 10 16.875 10 16.875C10 16.875 17.5 12.8921 17.5 6.875Z" stroke="#6B7280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                                        </svg>
+                                                </button>
+                                            <?php endif; ?>
+                                            <?php if ($showCompare): ?>
+                                                <button x-data="initCompareOnProductList()"
+                                                        @click.prevent="addToCompare(<?= (int)$product->getId() ?>)"
+                                                        aria-label="<?= $escaper->escapeHtmlAttr(__('Add to Compare')) ?>"
+                                                        type="button"
+                                                        class="action tocompare rounded-md w-10 h-10 bg-white p-0 border-[1.5px] border-neutral-200 border-solid inline-flex shrink-0 items-center justify-center text-gray-500 hover:text-yellow-500 hover:border-neutral-400 focus:ring-2 ring-[#E0E2E7] ml-1">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                                            <path d="M6.25 17.5L2.5 13.75M2.5 13.75L6.25 10M2.5 13.75H13.75M13.75 2.5L17.5 6.25M17.5 6.25L13.75 10M17.5 6.25L6.25 6.25" stroke="#6B7280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                                        </svg>
+                                                </button>
+                                            <?php endif; ?>
+                                            <?php if ($addToBlock = $block->getChildBlock('addto')): ?>
+                                                <?= $addToBlock->setProduct($product)->getChildHtml() ?>
+                                            <?php endif; ?>
+                                        </div>
+                                    </template>
+                                </div>
+                            <?php if ($product->isSaleable()): ?> 
+                            </form>
+                            <?php else: ?>
+                            </div>
+                            <?php endif; ?>
+                            <?php endforeach; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <template x-if="itemCount > pageSize">
+                    <div class="slider-navigation"
+                        role="group"
+                        aria-label="<?= $escaper->escapeHtml(__('Slide controls')) ?>"
+                        :id="$id('slider-nav')"
+                    >
+                   
+                        <div class="flex absolute top-1/2 -translate-y-1/2 justify-between w-full">
+                            <button
+                                role="button"
+                                aria-label="<?= $escaper->escapeHtml(__('Previous slide')) ?>"
+                                class="w-9 h-9 rounded-full md:w-11 md:h-11 md:rounded-md bg-white flex items-center justify-center ml-2 md:ml-10 shadow-md fill-neutral-600 hover:fill-primary"
+                                :class="{ 'pointer-events-none' : active === 0 }"
+                                @click="scrollPrevious"
+                            >
+                            <svg class="w-5 h-5 md:w-6 md:h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" clip-rule="evenodd" d="M12.7906 5.23017C13.0777 5.52875 13.0684 6.00353 12.7698 6.29063L8.83208 10L12.7698 13.7094C13.0684 13.9965 13.0777 14.4713 12.7906 14.7698C12.5035 15.0684 12.0287 15.0777 11.7302 14.7906L7.23017 10.5406C7.08311 10.3992 7 10.204 7 10C7 9.79599 7.08311 9.60078 7.23017 9.45938L11.7302 5.20938C12.0287 4.92228 12.5035 4.93159 12.7906 5.23017Z" />
+                            </svg>
+                            </button>
+
+                            <button
+                                role="button"
+                                aria-label="<?= $escaper->escapeHtml(__('Next slide')) ?>"
+                                class="w-9 h-9 rounded-full md:w-11 md:h-11 md:rounded-md bg-white flex items-center justify-center mr-2 md:mr-10 shadow-md fill-neutral-600 hover:fill-primary"
+                                :class="{ 'pointer-events-none' : active >= itemCount-pageSize }"
+                                @click="scrollNext"
+                            >
+                                <svg class="w-5 h-5 md:w-6 md:h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M7.20938 14.7698C6.92228 14.4713 6.93159 13.9965 7.23017 13.7094L11.1679 10L7.23017 6.29062C6.93159 6.00353 6.92228 5.52875 7.20938 5.23017C7.49647 4.93159 7.97125 4.92228 8.26983 5.20937L12.7698 9.45937C12.9169 9.60078 13 9.79599 13 10C13 10.204 12.9169 10.3992 12.7698 10.5406L8.26983 14.7906C7.97125 15.0777 7.49647 15.0684 7.20938 14.7698Z" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- <div class="flex gap-2.5 md:gap-3 justify-center items-center mt-4 w-full">
+                            <?php for ($i=0; $i < $itemCount; $i++): ?>
+                                <button
+                                    role="button"
+                                    aria-label="<?= $escaper->escapeHtmlAttr(__('Show slide %1 of %2', $i + 1, $itemCount)) ?>"
+                                    class="w-2 h-2 md:w-2.5 md:h-2.5 lg:w-3 lg:h-3 shadow rounded-full cursor-pointer hover:bg-white-500"
+                                    @click="scrollTo(<?= (int) $i ?>)"
+                                    :class="{
+                                        'w-2 h-2 md:w-2.5 md:h-2.5 lg:w-3 lg:h-3 bg-white shadow-[0px_0px_0px_3px] shadow-primary': active === <?= (int) $i ?>,
+                                        'w-2 h-2 md:w-2.5 md:h-2.5 lg:w-3 lg:h-3 bg-white': active !== <?= (int) $i ?>,
+                                        'hidden': (pageSize !== 1 && !!(<?= (int) $i ?> % pageSize))
+                                    }"
+                                >
+                                </button>
+                            <?php endfor; ?>
+                        </div> -->
+                        
+                    </div>
+                </template>
+                <span :id="$id('slider-end')" tabindex="-1"></span>
+            </section>
+		<?php } ?>
+	</div>
+</div>
