@@ -1,0 +1,125 @@
+<?php
+
+/** @var \Magento\Framework\View\Element\Template $block */
+/** @var \Magento\Framework\Escaper $escaper */
+/** @var \Hyva\Theme\Model\ViewModelRegistry $viewModels */
+/** @var \Hyva\Theme\ViewModel\Slider $sliderViewModel */
+
+// The item to render is set on the block before the template is rendered:
+
+/** @var \Magento\Catalog\Model\Product $item */
+    $builderHelper               = $this->helper('\Magezon\Builder\Helper\Data');
+    $coreHelper                  = $this->helper('\Magezon\Core\Helper\Data');
+    // $element                     = $this->getElement();
+    $id                          = time() . uniqid();
+    // $htmlId                      = $element->getHtmlId();
+    // $carouselOptions             = $this->getOwlCarouselOptions();
+    // $classes                     = $this->getOwlCarouselClasses();
+    // $sliderHeight                = $element->getData('slider_height');
+    // $lazyLoad                    = $element->getData('owl_lazyload');
+    // $hoverEffect                 = $element->getData('image_hover_effect');
+    // if ($hoverEffect) $classes[] = 'mgz-image-hovers';
+    $item = $block->getData('item');
+    $height = $block->getData('height');
+    // $backgroundType         = $item['background_type'];
+    $src                    = $item->getData('image') ? $builderHelper->getImageUrl($item->getData('image')) : '';
+    $heading                = $item->getData('heading') ? $item->getData('heading') : '';
+    $headingType            = $item->getData('heading_type') ? $item->getData('heading_type') : 'h2';
+    $headingAnimation       = $item->getData('heading_animation') ? $item->getData('heading_animation') : '';
+    $headingAnimationDelay  = $item->getData('heading_animation_delay') ? $item->getData('heading_animation_delay') : '';
+    $headingFontSize        = $item->getData('heading_font_size') ? $item->getData('heading_font_size') : 60;
+    $headingLineHeight      = $item->getData('heading_line_height') ? $item->getData('heading_line_height') : 80;
+    $caption1               = $item->getData('caption1') ? $item->getData('caption1') : '';
+    $caption1Type           = $item->getData('caption1_type') ? $item->getData('caption1_type') : 'div';
+    $caption1Animation      = $item->getData('caption1_animation') ? $item->getData('caption1_animation') : '';
+    $caption1AnimationDelay = $item->getData('caption1_animation_delay') ? $item->getData('caption1_animation_delay') : '';
+    $caption1FontSize       = $item->getData('caption1_font_size') ? $item->getData('caption1_font_size') : 24;
+    $caption1LineHeight     = $item->getData('caption1_line_height') ? $item->getData('caption1_line_height') : 38;
+    // $caption2               = $item->getData('caption2') ? $item->getData('caption2') : '';
+    // $caption2Type           = $item->getData('caption2_type') ? $item->getData('caption2_type') : 'div';
+    // $caption2Animation      = $item->getData('caption2_animation') ? $item->getData('caption2_animation') : '';
+    // $caption2AnimationDelay = $item->getData('caption2_animation_delay') ? $item->getData('caption2_animation_delay') : '';
+    // $caption2FontSize       = $item->getData('caption2_font_size') ? $item->getData('caption2_font_size') : 24;
+    // $caption2LineHeight     = $item->getData('caption2_line_height') ? $item->getData('caption2_line_height') : 38;
+    $linkType               = $item->getData('link_type') ? $item->getData('link_type') : 'full';
+    // $slideTarget            = $item->getData('slide_target') ? $item->getData('slide_target') : '';
+    // $slideLink              = $item->getData('slide_link') ? $this->getLinkParams($item->getData('slide_link')) : [];
+    $contentPosition        = $item->getData('content_position') ? $item->getData('content_position') : 'middle-center';
+    $button1                = $item->getData('button1') ? $item->getData('button1') : '';
+    $button1Animation       = $item->getData('button1_animation') ? $item->getData('button1_animation') : '';
+    $button1AnimationDelay  = $item->getData('button1_animation_delay') ? $item->getData('button1_animation_delay') : '';
+    $button1Link            = $item->getData('button1_link') ? $item->getData('button1_link') : '';
+    $button1Style           = $item->getData('button1_style') ? $item->getData('button1_style') : '';
+    $button1Size            = $item->getData('button1_size') ? $item->getData('button1_size') : '';
+    $button1FontSize        = $item->getData('button1_font_size') ? $item->getData('button1_font_size') : 18;
+    $button1LineHeight      = $item->getData('button1_line_height') ? $item->getData('button1_line_height') : 24;
+    $button2                = $item->getData('button2') ? $item->getData('button2') : '';
+    $button2Animation       = $item->getData('button2_animation') ? $item->getData('button2_animation') : '';
+    $button2AnimationDelay  = $item->getData('button2_animation_delay') ? $item->getData('button2_animation_delay') : '';
+    $button2Link            = $item->getData('button2_link') ? $this->getLinkParams($item->getData('button2_link')) : '';
+    $button2Style           = $item->getData('button2_style') ? $item->getData('button2_style') : '';
+    $button2Size            = $item->getData('button2_size') ? $item->getData('button2_size') : '';
+    $button2FontSize        = $item->getData('button2_font_size') ? $item->getData('button2_font_size') : 18;
+    $button2LineHeight      = $item->getData('button2_line_height') ? $item->getData('button2_line_height') : 24;
+    // $aspectRatio            = $item->getData('aspect_ratio') ? $item->getData('aspect_ratio') : 219;
+    // $ifrmeSrc               = $this->getIframeSrc($item);
+    // $localLink              = $item->getData('local_link') ? $item->getData('local_link') : '';
+    // $controls               = $item->getData('controls') ? $item->getData('controls') : '';
+    // $autoPlay               = $item->getData('autoplay') ? $item->getData('autoplay') : '';
+    // $mute                   = $item->getData('mute') ? $item->getData('mute') : '';
+    // $loop                   = $item->getData('loop') ? $item->getData('loop') : '';
+    // $controls               = false;
+    // $autoPlay               = true;
+    // $mute                   = true;
+    // $loop                   = true;
+    // if ($autoPlay) $mute    = false;
+?>
+
+<div class="w-full rounded-2xl" style="background-image:url(<?= $src ?>); height: <?= $height ?>px;">
+    <div class="item-content-wrapper mgz-flex-position-<?= $contentPosition ?>">
+        <div class="
+            item-content z-10 !p-0 left-0
+            !text-center !relative 
+        ">
+            <?php if ($heading) { ?>
+                <div class="slide-heading slide-animation mb-[5px]">
+                <<?= $headingType ?> class="slide-text !text-white !text-2xl md:!text-3xl lg:!text-5xl !font-bold">
+                    <?= $heading ?>
+                </<?= $headingType ?>>
+                </div>
+            <?php } ?>
+            <?php if ($caption1) { ?>
+                <div class="slide-caption1 slide-animation" <?= $caption1Animation ? 'data-animate-in="' . $caption1Animation . '"' : '' ?> <?= $caption1AnimationDelay ? 'data-animate-delay="' . $caption1AnimationDelay . '"' : '' ?>>
+                    <<?= $caption1Type ?> class="slide-text !text-white !text-md md:!text-lg lg:!text-2xl"  
+                    <?php if ($caption1FontSize) { ?>
+                    data-inline-fontsize="true" 
+                    data-fontsize="<?= $caption1FontSize ?>" 
+                    <?php } ?>
+                    <?php if ($caption1LineHeight) { ?>
+                    data-inline-lineheight="true" 
+                    data-lineheight="<?= $caption1LineHeight ?>"
+                    <?php } ?>
+                    ><?= $caption1 ?></<?= $caption1Type ?>>
+                </div>
+            <?php } ?>
+            <?php if ($linkType == 'button' && ($button1 || $button2)) { ?>
+                <div class="slide-buttons mt-[15px] mb-0">
+                    <?php if ($button1) { ?>
+                        <div class="mgz-button slide-button1 mgz-btn-style-<?= $button1Style ?> mgz-btn-size-<?= $button1Size ?>">
+                            <a
+                            class="mgz-btn !bg-neutral-800 !rounded-[8px] !py-3 !px-6 !text-white !text-lg md-max:!text-base"
+                            <?php if (isset($button1Link['url'])) { ?>
+                                href="<?= $button1Link['url'] ?>"
+                            <?php } ?>
+                            <?php if (isset($button1Link['blank']) && $button1Link['blank'] == 'true') { ?>
+                                target="_blank"
+                            <?php } ?>
+                            ><?= $button1 ?></a>
+                        </div>
+                    <?php } ?>
+
+                </div>
+            <?php } ?>
+        </div>
+    </div>
+</div>
